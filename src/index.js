@@ -1,8 +1,7 @@
 // require('dotenv').config({path:'./env'});
-
-import express from "express";
 // import mongoose from "mongoose";
 // import {DB_NAME} from "constants"
+import app from "./app.js";
 import connectDB from "./db/index.js";
 import dotenv from "dotenv";
 
@@ -10,10 +9,16 @@ dotenv.config({
   path:'./env'
 })
 
-const app = express()
-const port = 3000
-
-connectDB();
+//db here is asynchronus and we will get a promise here so using .then and ,catch
+connectDB()
+.then(()=>{
+  app.listen(process.env.PORT || 8000,()=>{
+    console.log(`Server is listening at ${process.env.PORT}`);
+  })
+})
+.catch((err)=>{
+  console.log("MONGO db connection failed !!!",err);
+});
 
 // // iffies
 // (async()=>{
@@ -25,10 +30,3 @@ connectDB();
 //   }
 // })()
 
-app.get('/', (req, res) => {
-  res.send('Hello World!')
-})
-
-app.listen(process.env.PORT, () => {
-  console.log(`Example app listening on port ${process.env.PORT}`)
-})
