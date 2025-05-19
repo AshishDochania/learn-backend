@@ -2,7 +2,7 @@ import {asyncHandler} from "../utils/asyncHandler.js"
 import {ApiError} from "../utils/ApiError.js"
 import {User} from "../models/user.model.js"
 import {uploadCloudinary} from "../utils/cloudinary.js"
-import {ApiResponse} from "../utils/ApiResponse.js"
+import ApiResponse from "../utils/ApiResponse.js"
 const registerUser=asyncHandler(async(req,res) =>{
     // take data
     // validate karoo
@@ -27,7 +27,7 @@ const registerUser=asyncHandler(async(req,res) =>{
     }
 
     // checking if user already registered
-    const existedUser=User.findOne({
+    const existedUser= await User.findOne({
         $or:[ { email },{ username } ]
     })
     if(existedUser){
@@ -36,7 +36,12 @@ const registerUser=asyncHandler(async(req,res) =>{
 
     //files
     const avatarLocalPAth = req.files?.avatar[0]?.path
-    const coverImageLocalPAth = req.files?.coverImage[0]?.path
+    // const coverImageLocalPAth = req.files?.coverImage[0]?.path
+    // here coverimagelocalpath was not checked if coming or not and this ? is not really doing it so will checkit with if statment only
+    let coverImageLocalPAth;
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
+        coverImageLocalPAth=req.files.coverImage[0].path;
+    }
 
     if(!avatarLocalPAth){
         throw new ApiError(400,"avatar file is required")
