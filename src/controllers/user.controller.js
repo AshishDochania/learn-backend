@@ -3,6 +3,23 @@ import {ApiError} from "../utils/ApiError.js"
 import {User} from "../models/user.model.js"
 import {uploadCloudinary} from "../utils/cloudinary.js"
 import ApiResponse from "../utils/ApiResponse.js"
+
+const generateAccessAndRefreshToken = async(userId) =>{
+    try {
+        const user=await User.findById(userId);
+        const accessToken=user.generateAccessToken()
+        const refreshToken=user.generateRefreshToken()
+
+        user.refreshToken=refreshToken;
+        await user.save({validateBeforeSave:false})
+        
+        return {accessToken,refreshToken}
+    } catch (error) {
+        throw new ApiError(500,"something went wrong while generating refresh and access token")
+    }
+}
+
+
 const registerUser=asyncHandler(async(req,res) =>{
     // take data
     // validate karoo
@@ -80,4 +97,88 @@ const registerUser=asyncHandler(async(req,res) =>{
     )
 })
 
-export {registerUser}
+const loginUser=asyncHandler(async(req,res) =>{
+    // take username and password
+    // find if someone exist with that username
+    // use user.ispaswrodcorret
+    // response me will return acess token and refresh token along with userinfo without the password
+    // cookies send
+
+    const {email, username,password}=req.body
+
+    if(!username || !email){
+        throw new ApiError(400,"username or password is required")
+    }
+    
+    const gotUser=await User.findOne({
+        $or:[{email},{username}]
+    })
+    if(!gotUser){
+        throw new ApiError(404,"User does not exist")
+    }
+
+    const correctPassword=await gotUser.isPasswordCorrect(password)
+
+    if(!correctPassword){
+        throw new ApiError(401,"Password is invalid")
+    }
+
+    // generating access and refresh token together should be put in a method so that both can be
+    // created with one call so baar baar na generate karne pade
+    const {accessToken,refreshToken}=await generateAccessAndRefreshToken(gotUser._id)
+
+    // here the gotuser we have do not have a refreshtoken so we can put it there or can get it from the database as it is there 
+    const user=gotUser.select("-password")
+    // sending all info in cookies
+    // designing some options(objects) of cookies
+    const options={
+        httpOnly:true,
+        secure:true
+    }
+    return res
+    .status(200)
+    .cookie("accessToken",accessToken,options)
+    .cookie("refreshToken",refreshToken,options)
+    .json(
+        new ApiResponse(
+            200,
+            {
+                user:user,accessToken,refreshToken
+            },
+            "User Logged In Successfully"
+        )
+    )
+})
+
+const logoutUser = asyncHandler(async(req,res)=>{
+    // clear cookies
+    // refresh token empty... 
+    // user object created needs to be deleted
+    // here we do not have anything to find the user so how to find a user who needs to be logged out
+    // created verifyJWT and now we have req.user access
+
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set:{
+                refreshToken:undefined
+            }
+        },
+        {// using new here we get the response with new changes
+            new:true
+        }
+    );
+
+    // now go for cookies
+    const options={
+        httpOnly:true,
+        secure:true
+    }
+
+    return res.status(200)
+    .clearCookie("accessToken",options)
+    .clearCookie("refreshToken",options)
+    .json(new ApiResponse(200,{},"User Logged Out Succesfully"))
+})
+
+export {registerUser,loginUser,logoutUser}
