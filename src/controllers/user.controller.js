@@ -1,7 +1,7 @@
 import {asyncHandler} from "../utils/asyncHandler.js"
 import {ApiError} from "../utils/ApiError.js"
 import {User} from "../models/user.model.js"
-import {uploadCloudinary} from "../utils/cloudinary.js"
+import {deleteCludinary, uploadCloudinary} from "../utils/cloudinary.js"
 import ApiResponse from "../utils/ApiResponse.js"
 import jwt from "jsonwebtoken"
 
@@ -270,6 +270,8 @@ const updateUserAvatar= asyncHandler(async(req,res)=>{
     // will user multer middleware and also verify JWT to know if the user is logged in and only after verifying the user we do it 
     const avatarLocalPAth=req.file?.path
 
+    deleteCludinary(req.user?.avatar);
+
     if(!avatarLocalPAth){
         throw new ApiError(400,"Avatar File is missing")
     }
@@ -289,6 +291,8 @@ const updateUserAvatar= asyncHandler(async(req,res)=>{
 const updateUserCoverImage= asyncHandler(async(req,res)=>{
     // will user multer middleware and also verify JWT to know if the user is logged in and only after verifying the user we do it 
     const coverImageLocalPAth=req.file?.path
+
+    deleteCludinary(req.user?.coverImage);
 
     if(!coverImageLocalPAth){
         throw new ApiError(400,"cover Image File is missing")
