@@ -221,4 +221,99 @@ const refreshAccessToken = asyncHandler(async(req,res) =>{
     }
 })
 
-export {registerUser,loginUser,logoutUser,refreshAccessToken}
+const changeCurrentPassword = asyncHandler(async(req,res) =>{
+    const {oldPassword,newPassword}=req.body;
+    // will user varifyJWT
+
+    const user= await User.findById(req.user?._id);
+    const isPasswordCorrect= await user.isPasswordCorrect(oldPassword)
+
+    if(!isPasswordCorrect){
+        throw new ApiError(400,"Invalid Password");
+    }
+    user.password=newPassword;
+    await user.save({validateBeforeSave:false});
+
+    return res.status(200).json(
+        new ApiResponse(200,{},"password changed successfully")
+    )
+})
+
+const getCurrentUser= asyncHandler(async(req,res) =>{
+    // using middleware here to get res.user from verifyJWT
+    return res.status(200)
+    .json(200,req.user,"current user fetched seccessfully")
+})
+
+const updateAccountDetails = asyncHandler(async(req,res) =>{
+    const {fullname,email,username}=req.body
+    // when updating a file try keeping different end points for it
+    // vide-18 -- 23:05
+
+    if(!fullname || !email){
+        throw new ApiError(400,"All fields are required")
+    }
+
+    const user=User.findByIdAndUpdate(req.user?._id,{
+        $set:{
+            fullname,
+            email
+        }
+    },{new :true}).select("-password");
+
+    return res.status(200)
+    .json(new ApiResponse(200,user,"Acccount details updated successfully"));
+
+})
+
+const updateUserAvatar= asyncHandler(async(req,res)=>{
+    // will user multer middleware and also verify JWT to know if the user is logged in and only after verifying the user we do it 
+    const avatarLocalPAth=req.file?.path
+
+    if(!avatarLocalPAth){
+        throw new ApiError(400,"Avatar File is missing")
+    }
+    const avatar=await uploadCloudinary(avatarLocalPAth);
+    if(!avatar.url){
+        throw new ApiError(400,"Error while uploading on avatar")
+    }
+
+    const user=await User.findByIdAndUpdate(req.user?._id,
+        {$set:{avatar:avatar.url}},
+        {new:true}
+    )
+    return res.status(200)
+    .json(new ApiResponse(200,user,"Avatar Sucessfully Updated"));
+})
+
+const updateUserCoverImage= asyncHandler(async(req,res)=>{
+    // will user multer middleware and also verify JWT to know if the user is logged in and only after verifying the user we do it 
+    const coverImageLocalPAth=req.file?.path
+
+    if(!coverImageLocalPAth){
+        throw new ApiError(400,"cover Image File is missing")
+    }
+    const coverImage=await uploadCloudinary(coverImageLocalPAth);
+    if(!coverImage.url){
+        throw new ApiError(400,"Error while uploading on cover image")
+    }
+
+    const user=await User.findByIdAndUpdate(req.user?._id,
+        {$set:{coverImage:coverImage.url}},
+        {new:true}
+    )
+    return res.status(200)
+    .json(new ApiResponse(200,user,"Cover Image Sucessfully Updated"));
+})
+
+export {
+    registerUser,
+    loginUser,
+    logoutUser,
+    refreshAccessToken,
+    changeCurrentPassword,
+    getCurrentUser,
+    updateAccountDetails,
+    updateUserAvatar,
+    updateUserCoverImage,
+}
